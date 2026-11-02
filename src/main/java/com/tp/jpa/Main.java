@@ -36,7 +36,9 @@ public class Main {
             switch (opc){
                 case 1 -> menuCategorias();
                 case 2 -> menuProductos();
-                case 3 -> menuReportes();
+                case 3 -> menuUsuarios();
+                case 4 -> menuPedidos();
+                case 5 -> menuReportes();
                 case 0 -> ejecutando = false;
                 default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
             }
@@ -52,7 +54,9 @@ public class Main {
         System.out.println("========================");
         System.out.println(" 1. Gestionar Categorías");
         System.out.println(" 2. Gestionar Productos");
-        System.out.println(" 3. Reportes");
+        System.out.println(" 3. Gestionar Usuarios");
+        System.out.println(" 4. Gestionar Pedidos");
+        System.out.println(" 5. Reportes");
         System.out.println(" 0. Salir");
         System.out.println("------------------------");
     }
@@ -104,11 +108,63 @@ public class Main {
         }
     }
 
+    public static void menuUsuarios(){
+        boolean ejecutando = true;
+        while(ejecutando){
+            System.out.println("\n  -- Submenu: Usuarios ------");
+            System.out.println("  1. Alta de usuario");
+            System.out.println("  2. Modificar usuario");
+            System.out.println("  3. Baja lógica de usuario");
+            System.out.println("  4. Listar usuarios activos");
+            System.out.println("  5. Buscar usuario por mail");
+            System.out.println("  0. Volver al menú principal");
+            System.out.println("  -------------------------------");
+            int opc = leerEntero("Seleccione una opción: ");
+
+            switch (opc){
+//                case 1 -> altaProducto();
+//                case 2 -> modificarProducto();
+//                case 3 -> bajaProducto();
+//                case 4 -> listarProductos();
+                case 0 -> ejecutando = false;
+                default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
+            }
+        }
+    }
+
+    public static void menuPedidos(){
+        boolean ejecutando = true;
+        while(ejecutando){
+            System.out.println("\n  -- Submenu: Pedidos ------");
+            System.out.println("  1. Alta de pedido");
+            System.out.println("  2. Cambiar estado de pedido");
+            System.out.println("  3. Baja lógica de pedido");
+            System.out.println("  4. Listar pedidos activos");
+            System.out.println("  5. Listar pedidos por usuario");
+            System.out.println("  6. Listar pedidos por estado");
+            System.out.println("  0. Volver al menú principal");
+            System.out.println("  -------------------------------");
+            int opc = leerEntero("Seleccione una opción: ");
+
+            switch (opc){
+//                case 1 -> altaProducto();
+//                case 2 -> modificarProducto();
+//                case 3 -> bajaProducto();
+//                case 4 -> listarProductos();
+                case 0 -> ejecutando = false;
+                default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
+            }
+        }
+    }
+
     public static void menuReportes(){
         boolean ejecutando = true;
         while(ejecutando){
             System.out.println("\n  -- Submenu: Reportes ------");
-            System.out.println("  1. Productos por categoría (JPQL)");
+            System.out.println("  1. Productos por categoría");
+            System.out.println("  2. Pedidos por usuario");
+            System.out.println("  3. Pedidos por estado");
+            System.out.println("  4. Total facturado");
             System.out.println("  0. Volver al menú principal");
             System.out.println("  -------------------------------");
             int opc = leerEntero("Seleccione una opción: ");

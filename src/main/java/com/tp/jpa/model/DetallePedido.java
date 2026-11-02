@@ -1,6 +1,7 @@
 package com.tp.jpa.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
@@ -17,6 +18,7 @@ public class DetallePedido extends Base {
     private Double subtotal;
 
     @ManyToOne
+    @JoinColumn(name = "producto_id")
     private Producto producto;
 
     public DetallePedido(int cantidad, Producto producto) {

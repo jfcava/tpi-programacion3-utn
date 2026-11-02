@@ -49,15 +49,13 @@ public class CategoriaRepository extends BaseRepository<Categoria> {
         EntityTransaction tx = em.getTransaction();
 
         try {
+            tx.begin();
             Categoria catEncontrada = em.find(Categoria.class, categoriaId);
 
             if(catEncontrada == null || catEncontrada.isEliminado()){
                 throw new IllegalArgumentException("La categoria esta dada de baja o no existe.");
             }
 
-
-            tx.begin();
-            em.persist(producto);
             catEncontrada.addProducto(producto);
             tx.commit();
 
