@@ -99,8 +99,7 @@ public class Main {
 
             switch (opc){
                 case 1 -> altaProducto();
-                case 2 -> modificarProducto();
-                case 3 -> bajaProducto();
+//                case 2 -> modificarProducto();
                 case 4 -> listarProductos();
                 case 0 -> ejecutando = false;
                 default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
@@ -350,7 +349,13 @@ public class Main {
         Categoria categoria = optCategoria.get();
 
 
-        String nombre = leerCadena("  Nombre: ");
+        String nombre = leerCadena("  Nombre (Obligatorio): ");
+        if(nombre.isEmpty()){
+            System.out.println("  [!] ERROR: El nombre del producto no puede estar vacío.");
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
 
         System.out.print("  Descripción: ");
         String descripcion = scanner.nextLine().trim();
@@ -389,136 +394,136 @@ public class Main {
         scanner.nextLine();
     }
 
-    public static void modificarProducto(){
-        if(!listarProductosActivos()){
-            System.out.println("\nPresione Enter para continuar...");
-            scanner.nextLine();
-            return;
-        }
-        Long id = (long)leerEntero("Ingrese el ID del producto a modificar: ");
-        Optional<Producto> optProducto = productoRepo.buscarPorId(id);
+//    public static void modificarProducto(){
+//        if(!listarProductosActivos()){
+//            System.out.println("\nPresione Enter para continuar...");
+//            scanner.nextLine();
+//            return;
+//        }
+//        Long id = (long)leerEntero("Ingrese el ID del producto a modificar: ");
+//        Optional<Producto> optProducto = productoRepo.buscarPorId(id);
+//
+//        if(optProducto.isEmpty() || optProducto.get().isEliminado()){
+//            System.out.println("\n  [!] No se encontró un producto activo con el ID " + id);
+//            System.out.println("  Presione Enter para continuar...");
+//            scanner.nextLine();
+//            return;
+//        }
+//
+//        Producto prod = optProducto.get();
+//        System.out.println("\nValores actuales -> [Nombre: " + prod.getNombre() + " | Precio: " + prod.getPrecio() + " | Stock: " + prod.getStock() + "]");
+//        System.out.println("(Deje el campo en blanco y presione ENTER si no desea modificar el valor)");
+//
+//        System.out.print("Nuevo Nombre: ");
+//        String nuevoNombre = scanner.nextLine().trim();
+//        if(!nuevoNombre.isBlank()){
+//            prod.setNombre(nuevoNombre);
+//        }
+//
+//        System.out.print("Nuevo Precio: ");
+//        String entradaPrecio = scanner.nextLine().trim();
+//        if(!entradaPrecio.isBlank()){
+//            try {
+//                double nuevoPrecio = Double.parseDouble(entradaPrecio);
+//                if(nuevoPrecio > 0){
+//                    prod.setPrecio(nuevoPrecio);
+//                }else {
+//                    System.out.println("  [!] Error: El precio debe ser mayor a 0. Se conserva el valor anterior.");
+//                }
+//            }catch (NumberFormatException e){
+//                System.out.println("  [!] Error: Formato de precio inválido. Se conserva el valor anterior.");
+//            }
+//        }
+//
+//        System.out.print("Nuevo Stock: ");
+//        String entradaStock = scanner.nextLine().trim();
+//        if(!entradaStock.isBlank()){
+//            try {
+//                int nuevoStock = Integer.parseInt(entradaStock);
+//                if(nuevoStock >= 0){
+//                    prod.setStock(nuevoStock);
+//                }else {
+//                    System.out.println("  [!] Error: El stock no puede ser negativo. Se conserva el valor anterior.");
+//                }
+//            }catch (NumberFormatException e){
+//                System.out.println("  [!] Error: Formato inválido. Se conserva el valor anterior.");
+//            }
+//        }
+//
+//        productoRepo.guardar(prod);
+//        System.out.println("\n  [*] Producto modificado con éxito.");
+//        System.out.println("  Presione Enter para continuar...");
+//        scanner.nextLine();
+//    }
 
-        if(optProducto.isEmpty() || optProducto.get().isEliminado()){
-            System.out.println("\n  [!] No se encontró un producto activo con el ID " + id);
-            System.out.println("  Presione Enter para continuar...");
-            scanner.nextLine();
-            return;
-        }
-
-        Producto prod = optProducto.get();
-        System.out.println("\nValores actuales -> [Nombre: " + prod.getNombre() + " | Precio: " + prod.getPrecio() + " | Stock: " + prod.getStock() + "]");
-        System.out.println("(Deje el campo en blanco y presione ENTER si no desea modificar el valor)");
-
-        System.out.print("Nuevo Nombre: ");
-        String nuevoNombre = scanner.nextLine().trim();
-        if(!nuevoNombre.isBlank()){
-            prod.setNombre(nuevoNombre);
-        }
-
-        System.out.print("Nuevo Precio: ");
-        String entradaPrecio = scanner.nextLine().trim();
-        if(!entradaPrecio.isBlank()){
-            try {
-                double nuevoPrecio = Double.parseDouble(entradaPrecio);
-                if(nuevoPrecio > 0){
-                    prod.setPrecio(nuevoPrecio);
-                }else {
-                    System.out.println("  [!] Error: El precio debe ser mayor a 0. Se conserva el valor anterior.");
-                }
-            }catch (NumberFormatException e){
-                System.out.println("  [!] Error: Formato de precio inválido. Se conserva el valor anterior.");
-            }
-        }
-
-        System.out.print("Nuevo Stock: ");
-        String entradaStock = scanner.nextLine().trim();
-        if(!entradaStock.isBlank()){
-            try {
-                int nuevoStock = Integer.parseInt(entradaStock);
-                if(nuevoStock >= 0){
-                    prod.setStock(nuevoStock);
-                }else {
-                    System.out.println("  [!] Error: El stock no puede ser negativo. Se conserva el valor anterior.");
-                }
-            }catch (NumberFormatException e){
-                System.out.println("  [!] Error: Formato inválido. Se conserva el valor anterior.");
-            }
-        }
-
-        productoRepo.guardar(prod);
-        System.out.println("\n  [*] Producto modificado con éxito.");
-        System.out.println("  Presione Enter para continuar...");
-        scanner.nextLine();
-    }
-
-    public static void bajaProducto(){
-        if(!listarProductosActivos()){
-            System.out.println("\nPresione Enter para continuar...");
-            scanner.nextLine();
-            return;
-        }
-
-        Long id = (long)leerEntero("Ingrese el ID del producto a dar de baja: ");
-
-        Optional<Producto> optProducto = productoRepo.buscarPorId(id);
-
-        if (optProducto.isEmpty() || optProducto.get().isEliminado()) {
-            System.out.println("\n  [!] Error: Producto no encontrado o dado de baja.");
-            System.out.println("  Presione Enter para continuar...");
-            scanner.nextLine();
-            return;
-        }
-
-        Producto prod = optProducto.get();
-
-        try {
-            boolean exito = productoRepo.eliminarLogico(id);
-
-            if (exito) {
-                System.out.println("\n  [✓] Baja lógica confirmada para el producto: " + prod.getNombre());
-            } else {
-                System.out.println("\n  [!] Error: Producto no encontrado o dado de baja");
-            }
-        }catch (Exception e){
-            System.out.println("\n  [!] ERROR al intentar la baja lógica.");
-            System.out.println("  Mas info: " + e.getMessage());
-        }
-
-        System.out.println("  Presione Enter para continuar...");
-        scanner.nextLine();
-
-    }
+//    public static void bajaProducto(){
+//        if(!listarProductosActivos()){
+//            System.out.println("\nPresione Enter para continuar...");
+//            scanner.nextLine();
+//            return;
+//        }
+//
+//        Long id = (long)leerEntero("Ingrese el ID del producto a dar de baja: ");
+//
+//        Optional<Producto> optProducto = productoRepo.buscarPorId(id);
+//
+//        if (optProducto.isEmpty() || optProducto.get().isEliminado()) {
+//            System.out.println("\n  [!] Error: Producto no encontrado o dado de baja.");
+//            System.out.println("  Presione Enter para continuar...");
+//            scanner.nextLine();
+//            return;
+//        }
+//
+//        Producto prod = optProducto.get();
+//
+//        try {
+//            boolean exito = productoRepo.eliminarLogico(id);
+//
+//            if (exito) {
+//                System.out.println("\n  [✓] Baja lógica confirmada para el producto: " + prod.getNombre());
+//            } else {
+//                System.out.println("\n  [!] Error: Producto no encontrado o dado de baja");
+//            }
+//        }catch (Exception e){
+//            System.out.println("\n  [!] ERROR al intentar la baja lógica.");
+//            System.out.println("  Mas info: " + e.getMessage());
+//        }
+//
+//        System.out.println("  Presione Enter para continuar...");
+//        scanner.nextLine();
+//
+//    }
 
     public static void listarProductos(){
         System.out.println("\n>> Listado de Productos Activos");
-        listarProductosActivos();
+        //listarProductosActivos();
         System.out.println("\nPresione Enter para continuar...");
         scanner.nextLine();
     }
 
-    public static boolean listarProductosActivos(){
-        List<Object[]> resultados = productoRepo.listarProductosConCategoriaJPQL();
-
-        if(resultados.isEmpty()){
-            System.out.println("  [!] No hay productos activos registrados.");
-            return false;
-        }
-
-        System.out.println("\n>> Listado de Productos Activos");
-        System.out.printf("%-5s %-20s %-12s %-8s %-12s %-15s%n", "ID", "Nombre", "Precio", "Stock", "Disponible", "Categoría");
-        System.out.println("--------------------------------------------------------------------------------");
-
-        for (Object[] fila : resultados){
-            Producto p = (Producto)fila[0];
-            String nombreCat = (String)fila[1];
-
-            String precioFormateado = String.format("$%.2f", p.getPrecio()).replace('.',',');
-
-            System.out.printf("%-5d %-20s %-12s %-8d %-12s %-15s%n", p.getId(), p.getNombre(), precioFormateado, p.getStock(), p.isDisponible() ? "Si" : "No", nombreCat);
-        }
-        System.out.println("--------------------------------------------------------------------------------");
-        return true;
-    }
+//    public static boolean listarProductosActivos(){
+//        List<Object[]> resultados = productoRepo.listarProductosConCategoriaJPQL();
+//
+//        if(resultados.isEmpty()){
+//            System.out.println("  [!] No hay productos activos registrados.");
+//            return false;
+//        }
+//
+//        System.out.println("\n>> Listado de Productos Activos");
+//        System.out.printf("%-5s %-20s %-12s %-8s %-12s %-15s%n", "ID", "Nombre", "Precio", "Stock", "Disponible", "Categoría");
+//        System.out.println("--------------------------------------------------------------------------------");
+//
+//        for (Object[] fila : resultados){
+//            Producto p = (Producto)fila[0];
+//            String nombreCat = (String)fila[1];
+//
+//            String precioFormateado = String.format("$%.2f", p.getPrecio()).replace('.',',');
+//
+//            System.out.printf("%-5d %-20s %-12s %-8d %-12s %-15s%n", p.getId(), p.getNombre(), precioFormateado, p.getStock(), p.isDisponible() ? "Si" : "No", nombreCat);
+//        }
+//        System.out.println("--------------------------------------------------------------------------------");
+//        return true;
+//    }
 
     // Metodos Reportes
     public static void mostrarProductosPorCategoria(){
