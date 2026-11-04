@@ -21,7 +21,7 @@ public class Usuario extends Base{
     private String apellido;
     private String mail;
     private String celular;
-    private String contrasenia;
+    private String contraseña;
 
     @Enumerated(EnumType.STRING)
     private Rol rol;
