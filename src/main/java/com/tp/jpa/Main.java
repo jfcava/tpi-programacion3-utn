@@ -127,10 +127,10 @@ public class Main {
 
             switch (opc){
                 case 1 -> altaUsuario();
-//                case 2 -> modificarUsuario();
-//                case 3 -> bajaUsuario();
-//                case 4 -> listarUsuariosActivos();
-//                case 5 -> buscarUsuarioPorMail();
+                case 2 -> modificarUsuario();
+                case 3 -> bajaUsuario();
+                case 4 -> listarUsuariosActivos();
+                case 5 -> buscarUsuarioPorMail();
                 case 0 -> ejecutando = false;
                 default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
             }
@@ -557,7 +557,7 @@ public class Main {
             }
         }
 
-        System.out.println("Celular (Opcional - Presione Enter para omitir): ");
+        System.out.print("Celular (Opcional - Presione Enter para omitir): ");
         String celular = scanner.nextLine().trim();
 
         String contrasenia = leerCadena("Contraseña (Opcional): ");
@@ -586,6 +586,161 @@ public class Main {
         scanner.nextLine();
     }
 
+    public static void modificarUsuario(){
+        if(!listarUsuariosActivos()){
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+        Long id = (long)leerEntero("Ingrese el ID del usuario a modificar: ");
+        Optional<Usuario> optUsuario = usuarioRepo.buscarPorId(id);
+
+        if(optUsuario.isEmpty() || optUsuario.get().isEliminado()){
+            System.out.println("\n  [!] No se encontró un usuario activo con el ID " + id);
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Usuario u = optUsuario.get();
+        System.out.println("\nValores actuales -> [Nombre: " + u.getNombre()
+                + " | Apellido: " + u.getApellido()
+                + " | Mail: " + u.getMail()
+                + " | Celular: " + u.getCelular()
+                + " | Contraseña: " + u.getContraseña()
+                + " | Rol: " + u.getRol() + "]");
+        System.out.println("(Deje el campo en blanco y presione ENTER si no desea modificar el valor)");
+
+        System.out.print("Nuevo Nombre: ");
+        String nuevoNombre = scanner.nextLine().trim();
+        if(!nuevoNombre.isBlank()){
+            u.setNombre(nuevoNombre);
+        }
+
+        System.out.print("Nuevo Apellido: ");
+        String nuevoApellido = scanner.nextLine().trim();
+        if(!nuevoApellido.isBlank()){
+            u.setApellido(nuevoApellido);
+        }
+
+        System.out.print("Nuevo Mail: ");
+        String nuevoMail = scanner.nextLine().trim();
+        if(!nuevoMail.isBlank()){
+            Optional<Usuario> optUsuarioConMail = usuarioRepo.buscarPorMail(nuevoMail);
+            if(optUsuarioConMail.isPresent() && !optUsuarioConMail.get().getId().equals(u.getId())){
+                System.out.println("  [!] Error: El mail ingresado ya está en uso por otro usuario. Se conserva el mail anterior.");
+            }else{
+                u.setMail(nuevoMail);
+            }
+        }
+
+        System.out.print("Nuevo Celular: ");
+        String nuevoCelular = scanner.nextLine().trim();
+        if(!nuevoCelular.isBlank()){
+            u.setCelular(nuevoCelular);
+        }
+
+        System.out.print("Nueva Contraseña: ");
+        String nuevaContrasenia = scanner.nextLine().trim();
+        if(!nuevaContrasenia.isBlank()){
+            u.setContraseña(nuevaContrasenia);
+        }
+
+        try {
+            usuarioRepo.guardar(u);
+            System.out.println("\n  [*] Usuario modificado con éxito.");
+        } catch (Exception e) {
+            System.out.println("\n  [!] ERROR al modificar el usuario: " + e.getMessage());
+        }
+        System.out.println("  Presione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void bajaUsuario(){
+        if(!listarUsuariosActivos()){
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Long id = (long)leerEntero("Ingrese el ID del usuario a dar de baja: ");
+
+        Optional<Usuario> optUsuario = usuarioRepo.buscarPorId(id);
+
+        if (optUsuario.isEmpty() || optUsuario.get().isEliminado()) {
+            System.out.println("\n  [!] Error: Usuario no encontrado o dado de baja.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Usuario u = optUsuario.get();
+
+        try {
+            boolean exito = usuarioRepo.eliminarLogico(id);
+
+            if (exito) {
+                System.out.println("\n  [✓] Baja lógica confirmada para el usuario: " + u.getNombreCompleto());
+            } else {
+                System.out.println("\n  [!] Error: Usuario no encontrado o dado de baja");
+            }
+        }catch (Exception e){
+            System.out.println("\n  [!] ERROR al intentar la baja lógica.");
+            System.out.println("  Mas info: " + e.getMessage());
+        }
+
+        System.out.println("  Presione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static boolean listarUsuariosActivos() {
+        List<Usuario> usuarios = usuarioRepo.listarActivos();
+
+        if (usuarios.isEmpty()) {
+            System.out.println("  [!] No hay usuarios activos registrados.");
+            return false;
+        }
+
+        System.out.println("\n>> Listado de Usuarios Activos");
+        System.out.printf("%-5s %-20s %-30s %-8s%n", "ID", "Nombre Completo", "Mail", "Rol");
+        System.out.println("--------------------------------------------------------------------------------");
+
+        for (Usuario u : usuarios) {
+            System.out.printf("%-5s %-20s %-30s %-8s%n",
+                        u.getId(), u.getNombreCompleto(), u.getMail(),
+                        u.getRol());
+        }
+
+        System.out.println("--------------------------------------------------------------------------------");
+        return true;
+    }
+
+    public static void buscarUsuarioPorMail(){
+        System.out.println("\n[BÚSQUEDA DE USUARIO POR MAIL]");
+
+        Optional<Usuario> usuarioBuscado = usuarioRepo.buscarPorMail(leerCadena("Ingrese mail de usuario a buscar: "));
+
+        if(usuarioBuscado.isPresent()){
+            Usuario usuarioEncontrado = usuarioBuscado.get();
+
+//            String celular = (usuarioEncontrado.getCelular() != null && !usuarioEncontrado.getCelular().isBlank())
+//                    ? usuarioEncontrado.getCelular()
+//                    : "Sin registrar";
+
+            System.out.println("\n>> Usuario Encontrado");
+            System.out.printf("%-5s %-25s %-30s %-15s %-8s%n", "ID", "Nombre Completo", "Mail", "Celular", "Rol");
+            System.out.println("-------------------------------------------------------------------------------------");
+
+            System.out.printf("%-5s %-25s %-30s %-15s %-8s%n", usuarioEncontrado.getId(), usuarioEncontrado.getNombreCompleto(), usuarioEncontrado.getMail(), (usuarioEncontrado.getCelular() != null && !usuarioEncontrado.getCelular().isBlank()) ? usuarioEncontrado.getCelular() : "Sin registrar", usuarioEncontrado.getRol());
+            System.out.println("-------------------------------------------------------------------------------------");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+        }else{
+            System.out.println("\n  [!] No existe un usuario activo con el mail buscado.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+        }
+    }
 
     // Metodos Reportes
     public static void mostrarProductosPorCategoria(){
