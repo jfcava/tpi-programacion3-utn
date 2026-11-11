@@ -1,1 +1,1 @@
-rootProject.name = "parcial2-Prog3"
+rootProject.name = "tpi-programacion3"

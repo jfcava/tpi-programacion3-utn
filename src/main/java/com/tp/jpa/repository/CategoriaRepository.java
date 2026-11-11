@@ -56,10 +56,22 @@ public class CategoriaRepository extends BaseRepository<Categoria> {
                 throw new IllegalArgumentException("La categoria esta dada de baja o no existe.");
             }
 
+            boolean nombreRepetido = catEncontrada.getProductos().stream()
+                    .anyMatch(p -> !p.isEliminado()
+                            && p.getNombre().equalsIgnoreCase(producto.getNombre()));
+
+            if (nombreRepetido) {
+                throw new IllegalArgumentException(
+                        "Ya existe un producto activo llamado '" + producto.getNombre() + "' en esta categoría.");
+            }
+
             catEncontrada.addProducto(producto);
             tx.commit();
 
             return producto;
+        } catch (IllegalArgumentException e) {
+            if (tx.isActive()) tx.rollback();
+            throw e;
         } catch (Exception e) {
             if(tx.isActive()) tx.rollback();
             throw new RuntimeException("Error al agregar el producto a la categoría: " + e.getMessage(), e);

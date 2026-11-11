@@ -1,17 +1,22 @@
 package com.tp.jpa;
 
-import com.tp.jpa.model.Categoria;
-import com.tp.jpa.model.Producto;
-import com.tp.jpa.model.Usuario;
+import com.tp.jpa.DTOs.ItemTemporal;
+import com.tp.jpa.model.*;
+import com.tp.jpa.model.enums.Estado;
+import com.tp.jpa.model.enums.FormaPago;
 import com.tp.jpa.model.enums.Rol;
 import com.tp.jpa.repository.CategoriaRepository;
+import com.tp.jpa.repository.PedidoRepository;
 import com.tp.jpa.repository.ProductoRepository;
 import com.tp.jpa.repository.UsuarioRepository;
 import com.tp.jpa.util.JPAUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import org.hibernate.tool.schema.internal.exec.ScriptTargetOutputToFile;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
+import javax.swing.text.html.Option;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,6 +26,7 @@ public class Main {
     private static final CategoriaRepository categoriaRepo = new CategoriaRepository();
     private static final ProductoRepository productoRepo = new ProductoRepository();
     private static final UsuarioRepository usuarioRepo = new UsuarioRepository();
+    private static final PedidoRepository pedidoRepo = new PedidoRepository();
 
     public static void main(String[] args) {
 
@@ -152,10 +158,12 @@ public class Main {
             int opc = leerEntero("Seleccione una opción: ");
 
             switch (opc){
-//                case 1 -> altaProducto();
-//                case 2 -> modificarProducto();
-//                case 3 -> bajaProducto();
-//                case 4 -> listarProductos();
+                case 1 -> altaPedido();
+                case 2 -> cambiarEstadoPedido();
+                case 3 -> bajaPedido();
+                case 4 -> listarPedidosActivos();
+                case 5 -> listarPedidosPorUsuario();
+                case 6 -> listarPedidosPorEstado();
                 case 0 -> ejecutando = false;
                 default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
             }
@@ -176,6 +184,9 @@ public class Main {
 
             switch (opc){
                 case 1 -> mostrarProductosPorCategoria();
+                case 2 -> mostrarPedidosPorUsuario();
+                case 3 -> listarPedidosPorEstado();
+                case 4 -> mostrarTotalFacturado();
                 case 0 -> ejecutando = false;
                 default -> System.out.println("  [!] Opción inválida. Intente de nuevo.");
             }
@@ -247,8 +258,12 @@ public class Main {
             cat.setDescripcion(nuevaDescripcion);
         }
 
-        categoriaRepo.guardar(cat);
-        System.out.println("\n  [*] Categoría modificada con éxito.");
+        try {
+            categoriaRepo.guardar(cat);
+            System.out.println("\n  [*] Categoría modificada con éxito.");
+        } catch (Exception e) {
+            System.out.println("\n  [!] ERROR al modificar la categoría: " + e.getMessage());
+        }
         System.out.println("  Presione Enter para continuar...");
         scanner.nextLine();
     }
@@ -366,7 +381,12 @@ public class Main {
         System.out.print("  Descripción: ");
         String descripcion = scanner.nextLine().trim();
 
-        Double precio = leerDouble("  Precio: ");
+        Double precio;
+        while (true) {
+            precio = leerDouble("  Precio (mayor a 0): ");
+            if (precio > 0) break;
+            System.out.println("  [!] El precio debe ser mayor a 0.");
+        }
 
         int stock = leerEntero("  Stock: ");
 
@@ -456,8 +476,12 @@ public class Main {
             }
         }
 
-        productoRepo.guardar(prod);
-        System.out.println("\n  [*] Producto modificado con éxito.");
+        try{
+            productoRepo.guardar(prod);
+            System.out.println("\n  [*] Producto modificado con éxito.");
+        } catch (Exception e) {
+            System.out.println("\n  [!] ERROR al modificar el producto: " + e.getMessage());
+        }
         System.out.println("  Presione Enter para continuar...");
         scanner.nextLine();
     }
@@ -560,13 +584,21 @@ public class Main {
         System.out.print("Celular (Opcional - Presione Enter para omitir): ");
         String celular = scanner.nextLine().trim();
 
-        String contrasenia = leerCadena("Contraseña (Opcional): ");
+        String contrasenia = leerCadena("Contraseña (Obligatorio): ");
 
-        System.out.println("  Seleccione el Rol:");
-        System.out.println("  1. ADMIN");
-        System.out.println("  2. USUARIO");
-        int opcRol = leerEntero("Opción: ");
-        Rol rol = (opcRol == 1) ? Rol.ADMIN : Rol.USUARIO;
+        Rol rol = null;
+        while(rol == null){
+            System.out.println("  Seleccione el Rol:");
+            System.out.println("  1. ADMIN");
+            System.out.println("  2. USUARIO");
+            int opcRol = leerEntero("Opción: ");
+
+            switch(opcRol){
+                case 1 -> rol = Rol.ADMIN;
+                case 2 -> rol = Rol.USUARIO;
+                default -> System.out.println("  [!] Opción inválida. Debe elegir 1 o 2.\n");
+            }
+        }
 
         Usuario nuevoUsuario = Usuario.builder()
                 .nombre(nombre)
@@ -607,7 +639,6 @@ public class Main {
                 + " | Apellido: " + u.getApellido()
                 + " | Mail: " + u.getMail()
                 + " | Celular: " + u.getCelular()
-                + " | Contraseña: " + u.getContraseña()
                 + " | Rol: " + u.getRol() + "]");
         System.out.println("(Deje el campo en blanco y presione ENTER si no desea modificar el valor)");
 
@@ -742,8 +773,378 @@ public class Main {
         }
     }
 
+    // Metodos Pedidos
+    public static void altaPedido(){
+        System.out.println("\n === [ALTA DE PEDIDO]");
+
+        if(!listarUsuariosActivos()){
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Long idUsuario = (long)leerEntero("Ingrese el ID del usuario: ");
+        Optional<Usuario> optUsuario = usuarioRepo.buscarPorId(idUsuario);
+
+        if (optUsuario.isEmpty() || optUsuario.get().isEliminado()) {
+            System.out.println("\n  [!] Error: Usuario no encontrado o dado de baja.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Usuario usuarioSeleccionado = optUsuario.get();
+
+        FormaPago formaPago = null;
+        while (formaPago == null) {
+            System.out.println("Seleccione la forma de pago:");
+            System.out.println("  1. TARJETA");
+            System.out.println("  2. TRANSFERENCIA");
+            System.out.println("  3. EFECTIVO");
+            int opcFormaPago = leerEntero("Opción: ");
+
+            switch (opcFormaPago) {
+                case 1 -> formaPago = FormaPago.TARJETA;
+                case 2 -> formaPago = FormaPago.TRANSFERENCIA;
+                case 3 -> formaPago = FormaPago.EFECTIVO;
+                default -> System.out.println("  [!] Opción inválida. Intente nuevamente.\n");
+            }
+        }
+
+        List<ItemTemporal> itemsTemporales = new ArrayList<>();
+        boolean agregarMasProductos = true;
+
+        while(agregarMasProductos){
+            if(!listarProductosActivos()) {
+                System.out.println("\nPresione Enter para continuar...");
+                scanner.nextLine();
+                break;
+            }
+
+            Long idProducto = (long)leerEntero("Ingrese el ID del producto a agregar: ");
+            Optional<Producto> optProducto = productoRepo.buscarPorId(idProducto);
+
+            if(optProducto.isEmpty() || optProducto.get().isEliminado()){
+                System.out.println("\n  [!] No se encontró un producto activo con el ID " + idProducto);
+                System.out.println("  Presione Enter para continuar...");
+                scanner.nextLine();
+                continue;
+            }
+
+            Producto productoSeleccionado = optProducto.get();
+            if(!productoSeleccionado.isDisponible()){
+                System.out.println("\n  [!] El producto seleccionado no esta disponible.");
+                System.out.println("  Presione Enter para continuar...");
+                scanner.nextLine();
+                continue;
+            }
+
+            int cantidad = leerEntero("Cantidad: ");
+            if(cantidad <= 0){
+                System.out.println("\n  [!] La cantidad debe ser mayor a 0.");
+                continue;
+            }
+
+            int cantidadAcumulada = itemsTemporales.stream()
+                    .filter(item -> item.idProducto().equals(idProducto))
+                    .mapToInt(ItemTemporal::cantidad)
+                    .sum();
+
+            int stockDisponibleReal = productoSeleccionado.getStock() - cantidadAcumulada;
+
+            if (stockDisponibleReal < cantidad) {
+                System.out.println("\n  [!] La cantidad ingresada supera el stock disponible real.");
+                System.out.println("  Stock Total: " + productoSeleccionado.getStock() + " | Ya agregados al carrito: " + cantidadAcumulada);
+                System.out.println("  Presione Enter para continuar...");
+                scanner.nextLine();
+                continue;
+            }
+
+            itemsTemporales.add(new ItemTemporal(idProducto, cantidad));
+            System.out.println("  [✓] Producto '" + productoSeleccionado.getNombre() + "' agregado al pedido temporal.");
+
+            System.out.print("\n¿Desea agregar otro producto? (S/N) [Por defecto N]: ");
+            String resp = scanner.nextLine().trim().toUpperCase();
+            agregarMasProductos = resp.equals("S");
+        }
+
+        if (itemsTemporales.isEmpty()) {
+            System.out.println("\n  [!] Operación cancelada: El pedido debe contener al menos un producto.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        EntityManager em = JPAUtil.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+
+        try {
+            tx.begin();
+
+            Usuario usuario = em.find(Usuario.class, idUsuario);
+            if(usuario == null || usuario.isEliminado()){
+                throw new RuntimeException("El usuario seleccionado no existe o está dado de baja.");
+            }
+
+            Pedido pedido = Pedido.builder()
+                    .fecha(LocalDate.now())
+                    .estado(Estado.PENDIENTE)
+                    .formaPago(formaPago)
+                    .build();
+
+            for (ItemTemporal item : itemsTemporales) {
+                Producto producto = em.find(Producto.class, item.idProducto());
+
+                if (producto == null || producto.isEliminado() || !producto.isDisponible()) {
+                    throw new RuntimeException("El producto ID " + item.idProducto() + " ya no está disponible.");
+                }
+
+                if (producto.getStock() < item.cantidad()) {
+                    throw new RuntimeException("Stock insuficiente durante la transacción para: " + producto.getNombre());
+                }
+
+                pedido.addDetallePedido(item.cantidad(), producto);
+                producto.setStock(producto.getStock() - item.cantidad());
+            }
+
+            pedido.calcularTotal();
+
+            em.persist(pedido);
+            usuario.getPedidos().add(pedido);
+
+            tx.commit();
+
+            System.out.println("\n  ==================================================");
+            System.out.println("  [✓] ¡PEDIDO REGISTRADO EXITOSAMENTE!");
+            System.out.println("  ID Pedido: " + pedido.getId());
+            System.out.println("  Fecha: " + pedido.getFecha());
+            System.out.println("  Cliente: " + usuario.getNombreCompleto());
+            System.out.println("  Forma de Pago: " + pedido.getFormaPago());
+            System.out.println("  --------------------------------------------------");
+            System.out.println("  Resumen de Ítems:");
+            for (DetallePedido dp : pedido.getDetallesPedidos()) {
+                System.out.printf("   - %s x%d -> Subtotal: $%.2f%n",
+                        dp.getProducto().getNombre(), dp.getCantidad(), dp.getSubtotal());
+            }
+            System.out.println("  --------------------------------------------------");
+            System.out.printf("  TOTAL DEL PEDIDO: $%.2f%n", pedido.getTotal());
+            System.out.println("  ==================================================");
+
+        } catch (Exception e) {
+            if (tx.isActive()) {
+                tx.rollback();
+            }
+            System.out.println("\n  [!] ERROR AL PROCESAR LA TRANSACCIÓN. Operación cancelada (Rollback completo).");
+            System.out.println("  Detalle: " + e.getMessage());
+        } finally {
+            em.close();
+        }
+
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void cambiarEstadoPedido(){
+        System.out.println("\n === [CAMBIAR ESTADO DE PEDIDO]");
+
+        Long idPedido = (long) leerEntero("Ingrese el ID del pedido: ");
+        Optional<Pedido> optPedido = pedidoRepo.buscarPorId(idPedido);
+
+        if(optPedido.isEmpty() || optPedido.get().isEliminado()){
+            System.out.println("\n  [!] Error: El pedido ID " + idPedido + " no existe o está dado de baja.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Pedido pedido = optPedido.get();
+
+        System.out.println("\nEstado actual del Pedido ID " + pedido.getId() + ": [" + pedido.getEstado() + "]");
+
+        System.out.println("\nSeleccione el nuevo estado:");
+        System.out.println("  1. PENDIENTE");
+        System.out.println("  2. CONFIRMADO");
+        System.out.println("  3. TERMINADO");
+        System.out.println("  4. CANCELADO");
+        int opcEstado = leerEntero("Opción (1-4): ");
+
+        Estado nuevoEstado = switch (opcEstado) {
+            case 1 -> Estado.PENDIENTE;
+            case 2 -> Estado.CONFIRMADO;
+            case 3 -> Estado.TERMINADO;
+            case 4 -> Estado.CANCELADO;
+            default -> null;
+        };
+
+        if (nuevoEstado == null) {
+            System.out.println("\n  [!] Opción de estado inválida. Operación cancelada.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        pedido.setEstado(nuevoEstado);
+
+        try {
+            pedidoRepo.guardar(pedido);
+
+            System.out.println("\n  [✓] Estado actualizado con éxito.");
+            System.out.println("  ID Pedido: " + pedido.getId());
+            System.out.println("  Nuevo Estado: " + pedido.getEstado());
+        } catch (Exception e) {
+            System.out.println("\n  [!] Error al actualizar el estado del pedido: " + e.getMessage());
+        }
+
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void bajaPedido(){
+        System.out.println("\n === [BAJA LOGICA DE PEDIDO]");
+
+        Long idPedido = (long) leerEntero("Ingrese el ID del pedido: ");
+        Optional<Pedido> optPedido = pedidoRepo.buscarPorId(idPedido);
+
+        if(optPedido.isEmpty() || optPedido.get().isEliminado()){
+            System.out.println("\n  [!] Error: El pedido ID " + idPedido + " no existe o está dado de baja.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Pedido pedido = optPedido.get();
+
+        try {
+            boolean exito = pedidoRepo.eliminarLogico(idPedido);
+
+            if(exito){
+                String totalFormateado = String.format("$%.2f", pedido.getTotal()).replace('.', ',');
+                System.out.println("\n  [✓] Baja lógica realizada con éxito para el pedido.");
+                System.out.println("  ID Pedido: " + pedido.getId());
+                System.out.println("  Total del Pedido: " + totalFormateado);
+            }else{
+                System.out.println("\n  [!] Error: Pedido no encontrado o ya dado de baja.");
+            }
+        }catch (Exception e){
+            System.out.println("\n  [!] ERROR al intentar la baja lógica del pedido.");
+            System.out.println("  Detalle: " + e.getMessage());
+        }
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void listarPedidosActivos(){
+        List<Pedido> pedidosActivos = pedidoRepo.listarActivos();
+
+        if(pedidosActivos.isEmpty()){
+            System.out.println("  [!] No hay pedidos activos registrados.");
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println("\n>> Listado de Pedidos Activos");
+        System.out.printf("%-5s %-15s %-15s %-20s %-15s%n", "ID", "Fecha", "Estado", "Forma de Pago", "Total");
+        System.out.println("-----------------------------------------------------------------------------");
+
+        for (Pedido pedido : pedidosActivos){
+            String totalFormateado = String.format("$%.2f", pedido.getTotal()).replace('.', ',');
+            System.out.printf("%-5d %-15s %-15s %-20s %-15s%n", pedido.getId(), pedido.getFecha(), pedido.getEstado(), pedido.getFormaPago(), totalFormateado);
+        }
+        System.out.println("-----------------------------------------------------------------------------");
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void listarPedidosPorUsuario(){
+        if(!listarUsuariosActivos()){
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Long id = (long)leerEntero("Ingrese el ID del usuario: ");
+        Optional<Usuario> optUsuario = usuarioRepo.buscarPorId(id);
+
+        if(optUsuario.isEmpty() || optUsuario.get().isEliminado()){
+            System.out.println("\n  [!] No se encontró un usuario activo con el ID " + id);
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Usuario u = optUsuario.get();
+        List<Pedido> pedidos = usuarioRepo.buscarPedidosPorUsuario(u.getId());
+        if(pedidos.isEmpty()){
+            System.out.println("\n  [!] El usuario ID: " + u.getId() + " no posee pedidos registrados.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println("\n>> Listado de Pedidos - USUARIO: " + u.getNombreCompleto());
+        System.out.printf("%-5s %-15s %-15s %-15s%n", "ID", "Fecha", "Estado", "Total");
+        System.out.println("-----------------------------------------------------------------------------");
+
+        for (Pedido pedido : pedidos){
+            String totalFormateado = String.format("$%.2f", pedido.getTotal()).replace('.', ',');
+            System.out.printf("%-5d %-15s %-15s %-15s%n", pedido.getId(), pedido.getFecha(), pedido.getEstado(), totalFormateado);
+        }
+        System.out.println("-----------------------------------------------------------------------------");
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void listarPedidosPorEstado(){
+        System.out.println("\n === [LISTA DE PEDIDOS POR ESTADO]");
+        System.out.println("\nSeleccion el estado a filtrar:");
+        System.out.println("  1. PENDIENTE");
+        System.out.println("  2. CONFIRMADO");
+        System.out.println("  3. TERMINADO");
+        System.out.println("  4. CANCELADO");
+        int opcEstado = leerEntero("Opción (1-4): ");
+
+        Estado estadoSeleccionado = switch (opcEstado) {
+            case 1 -> Estado.PENDIENTE;
+            case 2 -> Estado.CONFIRMADO;
+            case 3 -> Estado.TERMINADO;
+            case 4 -> Estado.CANCELADO;
+            default -> null;
+        };
+
+        if (estadoSeleccionado == null) {
+            System.out.println("\n  [!] Opción de estado inválida. Operación cancelada.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        List<Pedido> pedidos = pedidoRepo.buscarPorEstado(estadoSeleccionado);
+        if(pedidos.isEmpty()){
+            System.out.println("\n  [!] No existen pedidos registrados con estado " + estadoSeleccionado);
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println("\n>> Listado de Pedidos - ESTADO: " + estadoSeleccionado);
+        System.out.printf("%-5s %-15s %-20s %-15s%n", "ID", "Fecha", "Forma de Pago", "Total");
+        System.out.println("-----------------------------------------------------------------------------");
+
+        for (Pedido pedido : pedidos){
+            String totalFormateado = String.format("$%.2f", pedido.getTotal()).replace('.', ',');
+            System.out.printf("%-5d %-15s %-20s %-15s%n", pedido.getId(), pedido.getFecha(), pedido.getFormaPago(), totalFormateado);
+        }
+        System.out.println("-----------------------------------------------------------------------------");
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+
+    }
+
     // Metodos Reportes
     public static void mostrarProductosPorCategoria(){
+        System.out.println("\n[REPORTE: PRODUCTOS POR CATEGORIA]");
+
         if(!listarCategoriasActivas()){
             System.out.println("\nPresione Enter para continuar...");
             scanner.nextLine();
@@ -768,6 +1169,72 @@ public class Main {
             System.out.println("------------------------------------------------------------------");
         }
         System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void mostrarPedidosPorUsuario(){
+        System.out.println("\n[REPORTE: PEDIDOS POR USUARIO]");
+
+        if (!listarUsuariosActivos()) {
+            System.out.println("\nPresione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Long id = (long) leerEntero("Ingrese el ID del usuario: ");
+        Optional<Usuario> optUsuario = usuarioRepo.buscarPorId(id);
+
+        if (optUsuario.isEmpty() || optUsuario.get().isEliminado()) {
+            System.out.println("\n  [!] No se encontró un usuario activo con el ID " + id);
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Usuario u = optUsuario.get();
+        List<Pedido> pedidos = usuarioRepo.buscarPedidosPorUsuario(u.getId());
+
+        if (pedidos.isEmpty()) {
+            System.out.println("\n  [!] El usuario ID " + u.getId() + " (" + u.getNombreCompleto() + ") no posee pedidos activos.");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        System.out.println("\n>> REPORTE DE PEDIDOS - CLIENTE: " + u.getNombreCompleto());
+        System.out.printf("%-5s %-15s %-15s %-20s %-15s%n", "ID", "Fecha", "Estado", "Forma de Pago", "Total");
+        System.out.println("-----------------------------------------------------------------------------");
+
+        for (Pedido pedido : pedidos) {
+            String totalFormateado = String.format("$%.2f", pedido.getTotal()).replace('.', ',');
+            System.out.printf("%-5d %-15s %-15s %-20s %-15s%n",
+                    pedido.getId(),
+                    pedido.getFecha(),
+                    pedido.getEstado(),
+                    pedido.getFormaPago(),
+                    totalFormateado);
+        }
+        System.out.println("-----------------------------------------------------------------------------");
+        System.out.println("\nPresione Enter para continuar...");
+        scanner.nextLine();
+    }
+
+    public static void mostrarTotalFacturado(){
+        System.out.println("\n[REPORTE: TOTAL FACTURADO]");
+
+        List<Pedido> pedidos = pedidoRepo.buscarPorEstado(Estado.TERMINADO);
+        if(pedidos.isEmpty()){
+            System.out.println("\n  TOTAL FACTURADO: $0.00");
+            System.out.println("  Presione Enter para continuar...");
+            scanner.nextLine();
+            return;
+        }
+
+        Double total = pedidos.stream().mapToDouble(Pedido::getTotal).sum();
+        String totalFormateado = String.format(Locale.US, "$%.2f", total).replace('.', ',');
+
+        System.out.println("\n  TOTAL FACTURADO: " + totalFormateado);
+        System.out.println("  Presione Enter para continuar...");
         scanner.nextLine();
     }
 

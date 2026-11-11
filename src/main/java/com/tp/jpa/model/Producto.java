@@ -8,7 +8,6 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @Setter
 @ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = false, of = "nombre")
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
